@@ -72,24 +72,28 @@ void oledkit_render_info_user(void) {
 
 #ifdef COMBO_ENABLE
 enum combos {
-    JK_LCLICK,
-    KL_RCLICK,
-    JL_MCLICK,
+    JK_LCLICK,   // J + K → 左クリック
+    KL_RCLICK,   // K + L → 右クリック
+    JL_MCLICK,   // J + L → ホイールクリック
+    QW_TAB,      // Q + W → Tab
     COMBO_LENGTH
 };
  
 uint16_t COMBO_LEN = COMBO_LENGTH;
  
-const uint16_t PROGMEM my_jk[] = {KC_J, KC_K, COMBO_END};
-const uint16_t PROGMEM my_kl[] = {KC_K, KC_L, COMBO_END};
-const uint16_t PROGMEM my_jl[] = {KC_J, KC_L, COMBO_END};
+const uint16_t PROGMEM combo_jk[] = {KC_J, KC_K, COMBO_END};
+const uint16_t PROGMEM combo_kl[] = {KC_K, KC_L, COMBO_END};
+const uint16_t PROGMEM combo_jl[] = {KC_J, KC_L, COMBO_END};
+const uint16_t PROGMEM combo_qw[] = {KC_Q, KC_W, COMBO_END};
  
 combo_t key_combos[] = {
-    [JK_LCLICK] = COMBO(my_jk, KC_BTN1),  // 左クリック
-    [KL_RCLICK] = COMBO(my_kl, KC_BTN2),  // 右クリック
-    [JL_MCLICK] = COMBO(my_jl, KC_BTN3),  // ホイールクリック
+    [JK_LCLICK] = COMBO(combo_jk, KC_BTN1),
+    [KL_RCLICK] = COMBO(combo_kl, KC_BTN2),
+    [JL_MCLICK] = COMBO(combo_jl, KC_BTN3),
+    [QW_TAB]    = COMBO(combo_qw, KC_TAB),
 };
 #endif  // COMBO_ENABLE
+
 #include "features/achordion.h"
 
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {

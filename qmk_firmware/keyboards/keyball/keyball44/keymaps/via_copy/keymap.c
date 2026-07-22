@@ -90,3 +90,27 @@ combo_t key_combos[] = {
     [JL_MCLICK] = COMBO(my_jl, KC_BTN3),  // ホイールクリック
 };
 #endif  // COMBO_ENABLE
+#include "features/achordion.h"
+
+bool process_record_user(uint16_t keycode, keyrecord_t* record) {
+    if (!process_achordion(keycode, record)) { return false; }
+    return true;
+}
+
+void matrix_scan_user(void) {
+    achordion_task();
+}
+
+// 記事のhold-while-undecided相当:
+// Shift/Ctrlだけ判定確定前から効かせる(GUIは誤爆が怖いので外す)
+bool achordion_eager_mod(uint8_t mod) {
+    switch (mod) {
+        case MOD_LSFT:
+        case MOD_RSFT:
+        case MOD_LCTL:
+        case MOD_RCTL:
+            return true;
+        default:
+            return false;
+    }
+}

@@ -70,82 +70,84 @@ void oledkit_render_info_user(void) {
 }
 #endif
 
-#ifdef COMBO_ENABLE
-enum combos {
-    JK_LCLICK,   // J + K → 左クリック
-    KL_RCLICK,   // K + L → 右クリック
-    JL_MCLICK,   // J + L → ホイールクリック
-    QW_TAB,      // Q + W → Tab
-    COMBO_LENGTH
-};
- 
-uint16_t COMBO_LEN = COMBO_LENGTH;
- 
-const uint16_t PROGMEM combo_jk[] = {KC_J, KC_K, COMBO_END};
-const uint16_t PROGMEM combo_kl[] = {KC_K, KC_L, COMBO_END};
-const uint16_t PROGMEM combo_jl[] = {KC_J, KC_L, COMBO_END};
-const uint16_t PROGMEM combo_qw[] = {KC_Q, KC_W, COMBO_END};
- 
-combo_t key_combos[] = {
-    [JK_LCLICK] = COMBO(combo_jk, KC_BTN1),
-    [KL_RCLICK] = COMBO(combo_kl, KC_BTN2),
-    [JL_MCLICK] = COMBO(combo_jl, KC_BTN3),
-    [QW_TAB]    = COMBO(combo_qw, KC_TAB),
-};
-#endif  // COMBO_ENABLE
-
 // ============================================================
-// urob式HRM (Achordion) — ここから末尾まで追記
+// urob式HRM (Achordion)
 // ============================================================
 #include "features/achordion.h"
-
+ 
+// ============================================================
+// AML: ボールを動かしたらクリックするまで留まる /
+//      クリック後は短時間で解除
+// ============================================================
+#define AML_TIMEOUT_STAY 60000        // ボール操作後の滞在時間(実質「クリック待ち」)
+#define AML_TIMEOUT_AFTER_CLICK 300   // クリック後にレイヤーを解除するまでの時間
+ 
+static bool aml_stay_mode = false;
+ 
+// ボールが動いたら「クリック待ち」モードへ(長いタイムアウト)
+report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
+    if ((mouse_report.x != 0 || mouse_report.y != 0) && !aml_stay_mode) {
+        set_auto_mouse_timeout(AML_TIMEOUT_STAY);
+        aml_stay_mode = true;
+    }
+    return mouse_report;
+}
+ 
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
     if (!process_achordion(keycode, record)) { return false; }
+ 
+    // マウスボタンが押されたら「解除待ち」モードへ(短いタイムアウト)
+    if (record->event.pressed &&
+        keycode >= KC_MS_BTN1 && keycode <= KC_MS_BTN8) {
+        set_auto_mouse_timeout(AML_TIMEOUT_AFTER_CLICK);
+        aml_stay_mode = false;
+    }
     return true;
 }
-
+ 
 void matrix_scan_user(void) {
     achordion_task();
 }
-
-// ------------------------------------------------------------
-// hold-trigger-key-positions + hold-trigger-on-release 相当
-// 基本は「反対の手のキーとの組み合わせのみhold」、例外が2つ
-// ------------------------------------------------------------
+ 
+// ボールの微振動での誤発動を防ぐ閾値
+bool auto_mouse_activation(report_mouse_t mouse_report) {
+    return abs(mouse_report.x) + abs(mouse_report.y) >= 3;
+}
+ 
+// スクロールモードキーはマウス操作扱い(押してもレイヤー維持)
+bool is_mouse_record_user(uint16_t keycode, keyrecord_t* record) {
+    switch (keycode) {
+        case SCRL_MO:
+            return true;
+    }
+    return false;
+}
+ 
+// 親指のLayer-Tapは即hold(hold-preferred相当)
+bool get_hold_on_other_key_press(uint16_t keycode, keyrecord_t* record) {
+    if (IS_QK_LAYER_TAP(keycode)) { return true; }
+    return false;
+}
+ 
+// urob式: 反対の手ルール+親指例外+同手モッド重ね
 bool achordion_chord(uint16_t tap_hold_keycode, keyrecord_t* tap_hold_record,
                      uint16_t other_keycode, keyrecord_t* other_record) {
     uint8_t row = other_record->event.key.row;
-
-    // 例外1: 相手が親指キーなら同じ手でもholdを許可
-    // Keyball44: 左手 row 0-3 / 右手 row 4-7、親指列は row 3 と 7
     if (row == 3 || row == 7) { return true; }
-
-    // 例外2: 相手もMod-Tap(HRM)なら同じ手でもholdを許可
-    // → 片手でCtrl+Shift等のモッド重ねが可能に
     if (IS_QK_MOD_TAP(other_keycode)) { return true; }
-
-    // 原則: 反対の手のみhold
     return achordion_opposite_hands(tap_hold_record, other_record);
 }
-
-// ------------------------------------------------------------
-// require-prior-idle-ms 相当(タイピングの流れの中ではtap優先)
-// ------------------------------------------------------------
+ 
+// urob式: 連続タイピング中はtap優先
 uint16_t achordion_streak_chord_timeout(uint16_t tap_hold_keycode,
                                         uint16_t next_keycode) {
-    // レイヤータップ(親指)は対象外:即レイヤーが効くように
     if (IS_QK_LAYER_TAP(tap_hold_keycode)) { return 0; }
-
-    // Shiftは文中でも多用するので短め、他の修飾キーは150ms
     uint8_t mods = mod_config(QK_MOD_TAP_GET_MODS(tap_hold_keycode));
     if (mods & (MOD_LSFT | MOD_RSFT)) { return 100; }
     return 150;
 }
-
-// ------------------------------------------------------------
-// hold-while-undecided 相当:Shift/Ctrlは判定確定前から効かせる
-// (Ctrl+クリック等のマウス併用向け。不要ならこの関数ごと削除可)
-// ------------------------------------------------------------
+ 
+// Shift/Ctrlは判定確定前から効かせる(Ctrl+クリック対応)
 bool achordion_eager_mod(uint8_t mod) {
     switch (mod) {
         case MOD_LSFT: case MOD_RSFT:
@@ -155,8 +157,4 @@ bool achordion_eager_mod(uint8_t mod) {
             return false;
     }
 }
-// 親指のLayer-Tapは「他のキーが押されたら即hold」= ZMKのhold-preferred相当
-bool get_hold_on_other_key_press(uint16_t keycode, keyrecord_t* record) {
-    if (IS_QK_LAYER_TAP(keycode)) { return true; }
-    return false;  // HRM(Mod-Tap)はbalancedのまま
-}
+ 

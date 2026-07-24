@@ -94,6 +94,9 @@ combo_t key_combos[] = {
 };
 #endif  // COMBO_ENABLE
 
+// ============================================================
+// urob式HRM (Achordion) — ここから末尾まで追記
+// ============================================================
 #include "features/achordion.h"
 
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
@@ -105,14 +108,48 @@ void matrix_scan_user(void) {
     achordion_task();
 }
 
-// 記事のhold-while-undecided相当:
-// Shift/Ctrlだけ判定確定前から効かせる(GUIは誤爆が怖いので外す)
+// ------------------------------------------------------------
+// hold-trigger-key-positions + hold-trigger-on-release 相当
+// 基本は「反対の手のキーとの組み合わせのみhold」、例外が2つ
+// ------------------------------------------------------------
+bool achordion_chord(uint16_t tap_hold_keycode, keyrecord_t* tap_hold_record,
+                     uint16_t other_keycode, keyrecord_t* other_record) {
+    uint8_t row = other_record->event.key.row;
+
+    // 例外1: 相手が親指キーなら同じ手でもholdを許可
+    // Keyball44: 左手 row 0-3 / 右手 row 4-7、親指列は row 3 と 7
+    if (row == 3 || row == 7) { return true; }
+
+    // 例外2: 相手もMod-Tap(HRM)なら同じ手でもholdを許可
+    // → 片手でCtrl+Shift等のモッド重ねが可能に
+    if (IS_QK_MOD_TAP(other_keycode)) { return true; }
+
+    // 原則: 反対の手のみhold
+    return achordion_opposite_hands(tap_hold_record, other_record);
+}
+
+// ------------------------------------------------------------
+// require-prior-idle-ms 相当(タイピングの流れの中ではtap優先)
+// ------------------------------------------------------------
+uint16_t achordion_streak_chord_timeout(uint16_t tap_hold_keycode,
+                                        uint16_t next_keycode) {
+    // レイヤータップ(親指)は対象外:即レイヤーが効くように
+    if (IS_QK_LAYER_TAP(tap_hold_keycode)) { return 0; }
+
+    // Shiftは文中でも多用するので短め、他の修飾キーは150ms
+    uint8_t mods = mod_config(QK_MOD_TAP_GET_MODS(tap_hold_keycode));
+    if (mods & (MOD_LSFT | MOD_RSFT)) { return 100; }
+    return 150;
+}
+
+// ------------------------------------------------------------
+// hold-while-undecided 相当:Shift/Ctrlは判定確定前から効かせる
+// (Ctrl+クリック等のマウス併用向け。不要ならこの関数ごと削除可)
+// ------------------------------------------------------------
 bool achordion_eager_mod(uint8_t mod) {
     switch (mod) {
-        case MOD_LSFT:
-        case MOD_RSFT:
-        case MOD_LCTL:
-        case MOD_RCTL:
+        case MOD_LSFT: case MOD_RSFT:
+        case MOD_LCTL: case MOD_RCTL:
             return true;
         default:
             return false;

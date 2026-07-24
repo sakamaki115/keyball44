@@ -84,10 +84,16 @@ static void render_mods(void) {
     oled_write_P(PSTR("G"), mods & MOD_MASK_GUI);
 }
  
-// 右手(マスター)側: Bongo Cat(タイピングに反応して叩く)
-void render_bongocat(void);
+// 右手(マスター)側: Luna(犬) + レイヤー名/修飾キー
+// Shiftで吠える / Ctrlで忍び足 / WPMで歩く・走る / Spaceでジャンプ
+void render_luna(void);
 void oledkit_render_info_user(void) {
-    render_bongocat();
+    render_luna();
+    oled_set_cursor(7, 1);
+    render_layer_name();
+    oled_set_cursor(7, 2);
+    oled_write_P(PSTR("Mods:"), false);
+    render_mods();
 }
  
 // 左手(スレーブ)側: ロゴの代わりにレイヤー名と修飾キーを大きく表示

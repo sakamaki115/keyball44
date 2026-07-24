@@ -35,3 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define QUICK_TAP_TERM 175    // urob: quick-tap-ms = 175(タップ直後の再押下はキーリピート)
 #define ACHORDION_STREAK      // urob: require-prior-idle 相当(連続タイピング中はtap優先)
 #define HOLD_ON_OTHER_KEY_PRESS_PER_KEY
+
+// OLED: 左手(スレーブ)側でレイヤー/修飾キーを表示するための状態同期
+#define SPLIT_LAYER_STATE_ENABLE
+#define SPLIT_MODS_ENABLE

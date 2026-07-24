@@ -61,12 +61,45 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 #ifdef OLED_ENABLE
 
+#ifdef OLED_ENABLE
+ 
 #    include "lib/oledkit/oledkit.h"
-
+ 
+// レイヤー名(自分のレイヤー構成に合わせて書き換え)
+static void render_layer_name(void) {
+    oled_write_P(PSTR("Ly:"), false);
+    switch (get_highest_layer(layer_state)) {
+        case 0:  oled_write_P(PSTR("Base "), false); break;
+        case 1:  oled_write_P(PSTR("Mouse"), false); break;
+        case 2:  oled_write_P(PSTR("Num  "), false); break;
+        case 3:  oled_write_P(PSTR("Sym  "), false); break;
+        default: oled_write_P(PSTR("?    "), false); break;
+    }
+}
+ 
+// hold中の修飾キーを反転表示(HRMの効き具合が目で見える)
+static void render_mods(void) {
+    uint8_t mods = get_mods();
+    oled_write_P(PSTR("S"), mods & MOD_MASK_SHIFT);
+    oled_write_P(PSTR("C"), mods & MOD_MASK_CTRL);
+    oled_write_P(PSTR("A"), mods & MOD_MASK_ALT);
+    oled_write_P(PSTR("G"), mods & MOD_MASK_GUI);
+}
+ 
+// 右手(マスター)側: Bongo Cat(タイピングに反応して叩く)
+void render_bongocat(void);
 void oledkit_render_info_user(void) {
-    keyball_oled_render_keyinfo();
-    keyball_oled_render_ballinfo();
-    keyball_oled_render_layerinfo();
+    render_bongocat();
+}
+ 
+// 左手(スレーブ)側: ロゴの代わりにレイヤー名と修飾キーを大きく表示
+void oledkit_render_logo_user(void) {
+    oled_write_P(PSTR("Keyball44"), false);
+    oled_advance_page(true);
+    render_layer_name();
+    oled_advance_page(true);
+    oled_write_P(PSTR("Mods: "), false);
+    render_mods();
 }
 #endif
 

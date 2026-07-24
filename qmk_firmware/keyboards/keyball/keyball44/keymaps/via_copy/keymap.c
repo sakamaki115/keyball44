@@ -155,3 +155,8 @@ bool achordion_eager_mod(uint8_t mod) {
             return false;
     }
 }
+// 親指のLayer-Tapは「他のキーが押されたら即hold」= ZMKのhold-preferred相当
+bool get_hold_on_other_key_press(uint16_t keycode, keyrecord_t* record) {
+    if (IS_QK_LAYER_TAP(keycode)) { return true; }
+    return false;  // HRM(Mod-Tap)はbalancedのまま
+}

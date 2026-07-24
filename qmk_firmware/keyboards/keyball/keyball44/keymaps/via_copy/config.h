@@ -24,8 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // もともとのKeyball設定(そのまま維持)
 // ============================================================
 #define TAP_CODE_DELAY 5                    // キー送信の押下→解放間に5ms(入力取りこぼし防止)
-#define POINTING_DEVICE_AUTO_MOUSE_ENABLE   // ボールを動かすと自動でマウスレイヤーへ
-#define AUTO_MOUSE_DEFAULT_LAYER 1          // その行き先はレイヤー1
+//#define POINTING_DEVICE_AUTO_MOUSE_ENABLE   // ボールを動かすと自動でマウスレイヤーへ
+//#define AUTO_MOUSE_DEFAULT_LAYER 1          // その行き先はレイヤー1
 
 // ============================================================
 // urob式HRMの判定設定
@@ -34,3 +34,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define PERMISSIVE_HOLD       // urob: flavor = "balanced"
 #define QUICK_TAP_TERM 175    // urob: quick-tap-ms = 175(タップ直後の再押下はキーリピート)
 #define ACHORDION_STREAK      // urob: require-prior-idle 相当(連続タイピング中はtap優先)
+#define HOLD_ON_OTHER_KEY_PRESS_PER_KEY

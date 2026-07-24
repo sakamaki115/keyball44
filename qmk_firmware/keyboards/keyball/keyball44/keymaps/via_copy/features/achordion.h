@@ -1,4 +1,4 @@
-// Copyright 2022-2026 Google LLC
+// Copyright 2022-2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,8 +51,6 @@
 
 #pragma once
 
-#warning "DEPRECATION NOTICE: This implementation of Achordion is deprecated and will be removed from this repo on 2026-10-01. Use the newer, module-based implementation of Achordion at <https://github.com/getreuer/qmk-modules/tree/main/achordion>. Find detailed instructions at <https://getreuer.info/posts/keyboards/achordion>."
-
 #include "quantum.h"
 
 #ifdef __cplusplus
@@ -77,9 +75,9 @@ bool process_achordion(uint16_t keycode, keyrecord_t* record);
 /**
  * Matrix task function for Achordion.
  *
- * Call this function from `housekeeping_task_user()` as
+ * Call this function from `matrix_scan_user()` as
  *
- *     void housekeeping_task_user(void) {
+ *     void matrix_scan_user(void) {
  *       achordion_task();
  *     }
  */

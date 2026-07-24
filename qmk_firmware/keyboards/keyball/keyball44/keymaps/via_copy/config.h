@@ -39,3 +39,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // OLED: 左手(スレーブ)側でレイヤー/修飾キーを表示するための状態同期
 #define SPLIT_LAYER_STATE_ENABLE
 #define SPLIT_MODS_ENABLE
+// 左手(スレーブ)側のBongo Catが両手の入力に反応するための同期
+#define SPLIT_ACTIVITY_ENABLE

@@ -7,5 +7,5 @@ VIA_ENABLE = yes
 LTO_ENABLE = yes
 
 SRC += features/achordion.c
-SRC += features/luna.c
-WPM_ENABLE = yes
+
+SRC += features/bongocat.c

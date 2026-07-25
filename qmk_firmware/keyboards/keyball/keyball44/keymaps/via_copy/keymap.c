@@ -63,6 +63,12 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 
 #    include "lib/oledkit/oledkit.h"
 
+// oledkitはロゴ表示のためスレーブ側を180度回転させるが、
+// 左右で同じ内容を表示する構成にしたので回転を揃える
+oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+    return rotation;
+}
+
 // レイヤー名(自分のレイヤー構成に合わせて書き換え)
 static void render_layer_name(void) {
     oled_write_P(PSTR("Ly:"), false);

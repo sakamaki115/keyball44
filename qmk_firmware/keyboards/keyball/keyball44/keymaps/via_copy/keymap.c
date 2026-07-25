@@ -108,6 +108,44 @@ void oledkit_render_logo_user(void) { render_luna_screen(); }  // 左手(スレ�
 
 
 // ============================================================
+// Swapper: 1キーAlt+Tab (Callum式)
+// タップごとに次のウィンドウへ。他のキーを押すか
+// レイヤーキーを離すとAltが解放されて確定。
+// RemapではUSER00(0x7E40)をレイヤー内の好きな位置に割り当てる。
+// ============================================================
+enum custom_keycodes {
+    SW_WIN = QK_USER_0,   // Remap: USER00 (0x7E40) Alt+Tab
+    SW_TAB,               // Remap: USER01 (0x7E41) Ctrl+Tab
+};
+
+static bool sw_win_active = false;
+static bool sw_tab_active = false;
+
+// Callumのupdate_swapper: trigger自身ならTab連打、
+// 他のキーイベントが来たら修飾キーを解放して確定
+static bool update_swapper(bool *active, uint16_t modish, uint16_t tabish,
+                           uint16_t trigger, uint16_t keycode,
+                           keyrecord_t *record) {
+    if (keycode == trigger) {
+        if (record->event.pressed) {
+            if (!*active) {
+                *active = true;
+                register_code(modish);
+            }
+            register_code(tabish);
+        } else {
+            unregister_code(tabish);
+        }
+        return true;
+    }
+    if (*active) {
+        unregister_code(modish);
+        *active = false;
+    }
+    return false;
+}
+
+// ============================================================
 // コンボ: 左クリック+右クリック同時押し → ホイールクリック
 // ============================================================
 const uint16_t PROGMEM middle_click_combo[] = {KC_BTN1, KC_BTN2, COMBO_END};
@@ -133,6 +171,12 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
+    // Swapper (|=で両方の解放判定を必ず実行する)
+    bool swapped = false;
+    swapped |= update_swapper(&sw_win_active, KC_LALT, KC_TAB, SW_WIN, keycode, record);
+    swapped |= update_swapper(&sw_tab_active, KC_LCTL, KC_TAB, SW_TAB, keycode, record);
+    if (swapped) { return false; }
+
     // Space(単体キー/LT・MTのtap側)でLunaがジャンプ
     {
         uint16_t base = (IS_QK_LAYER_TAP(keycode) || IS_QK_MOD_TAP(keycode))

@@ -60,9 +60,9 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 }
 
 #ifdef OLED_ENABLE
- 
+
 #    include "lib/oledkit/oledkit.h"
- 
+
 // レイヤー名(自分のレイヤー構成に合わせて書き換え)
 static void render_layer_name(void) {
     oled_write_P(PSTR("Ly:"), false);
@@ -74,48 +74,50 @@ static void render_layer_name(void) {
         default: oled_write_P(PSTR("?    "), false); break;
     }
 }
- 
-// hold中の修飾キーを反転表示(HRMの効き具合が目で見える)
+
+// hold中の修飾キーを反転表示(HRMの効きが目で見える)
 static void render_mods(void) {
-    uint8_t mods = get_mods();
+    uint8_t mods = get_mods() | get_oneshot_mods();
     oled_write_P(PSTR("S"), mods & MOD_MASK_SHIFT);
     oled_write_P(PSTR("C"), mods & MOD_MASK_CTRL);
     oled_write_P(PSTR("A"), mods & MOD_MASK_ALT);
     oled_write_P(PSTR("G"), mods & MOD_MASK_GUI);
 }
- 
-// 右手(マスター)側: キー情報/ボール情報/レイヤー情報 + レイヤー名/修飾キー
-void oledkit_render_info_user(void) {
-    keyball_oled_render_keyinfo();
-    keyball_oled_render_ballinfo();
-    keyball_oled_render_layerinfo();
+
+// 両面共通: Luna(犬) + レイヤー名/修飾キー
+// Shiftで吠える / Ctrlで忍び足 / WPMで歩く・走る / Spaceでジャンプ(右のみ)
+void render_luna(void);
+static void render_luna_screen(void) {
+    render_luna();
+    oled_set_cursor(7, 1);
     render_layer_name();
-    oled_write_P(PSTR(" "), false);
+    oled_set_cursor(7, 2);
+    oled_write_P(PSTR("Mods:"), false);
     render_mods();
 }
- 
-// 左手(スレーブ)側: Bongo Cat(両手のタイピングに反応)
-void render_bongocat(void);
-void oledkit_render_logo_user(void) {
-    render_bongocat();
-}
+
+void oledkit_render_info_user(void) { render_luna_screen(); }  // 右手(マスター)
+void oledkit_render_logo_user(void) { render_luna_screen(); }  // 左手(スレーブ)
 #endif
 
+
 // ============================================================
-// urob式HRM (Achordion)
+// コンボ: 左クリック+右クリック同時押し → ホイールクリック
 // ============================================================
-#include "features/achordion.h"
- 
+const uint16_t PROGMEM middle_click_combo[] = {KC_BTN1, KC_BTN2, COMBO_END};
+combo_t key_combos[] = {
+    COMBO(middle_click_combo, KC_BTN3),
+};
+
 // ============================================================
 // AML: ボールを動かしたらクリックするまで留まる /
 //      クリック後は短時間で解除
 // ============================================================
-#define AML_TIMEOUT_STAY 60000        // ボール操作後の滞在時間(実質「クリック待ち」)
-#define AML_TIMEOUT_AFTER_CLICK 300   // クリック後にレイヤーを解除するまでの時間
- 
+#define AML_TIMEOUT_STAY 60000
+#define AML_TIMEOUT_AFTER_CLICK 300
+
 static bool aml_stay_mode = false;
- 
-// ボールが動いたら「クリック待ち」モードへ(長いタイムアウト)
+
 report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
     if ((mouse_report.x != 0 || mouse_report.y != 0) && !aml_stay_mode) {
         set_auto_mouse_timeout(AML_TIMEOUT_STAY);
@@ -123,10 +125,19 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
     }
     return mouse_report;
 }
- 
+
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
-    if (!process_achordion(keycode, record)) { return false; }
- 
+    // Space(単体キー/LT・MTのtap側)でLunaがジャンプ
+    {
+        uint16_t base = (IS_QK_LAYER_TAP(keycode) || IS_QK_MOD_TAP(keycode))
+                            ? (keycode & 0xFF) : keycode;
+        if (base == KC_SPC) {
+            extern void luna_jump(void);
+            extern void luna_land(void);
+            if (record->event.pressed) { luna_jump(); } else { luna_land(); }
+        }
+    }
+
     // マウスボタンが押されたら「解除待ち」モードへ(短いタイムアウト)
     if (record->event.pressed &&
         keycode >= KC_MS_BTN1 && keycode <= KC_MS_BTN8) {
@@ -135,16 +146,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
     }
     return true;
 }
- 
-void matrix_scan_user(void) {
-    achordion_task();
-}
- 
+
 // ボールの微振動での誤発動を防ぐ閾値
 bool auto_mouse_activation(report_mouse_t mouse_report) {
     return abs(mouse_report.x) + abs(mouse_report.y) >= 3;
 }
- 
+
 // スクロールモードキーはマウス操作扱い(押してもレイヤー維持)
 bool is_mouse_record_user(uint16_t keycode, keyrecord_t* record) {
     switch (keycode) {
@@ -153,39 +160,10 @@ bool is_mouse_record_user(uint16_t keycode, keyrecord_t* record) {
     }
     return false;
 }
- 
+
 // 親指のLayer-Tapは即hold(hold-preferred相当)
 bool get_hold_on_other_key_press(uint16_t keycode, keyrecord_t* record) {
     if (IS_QK_LAYER_TAP(keycode)) { return true; }
     return false;
 }
- 
-// urob式: 反対の手ルール+親指例外+同手モッド重ね
-bool achordion_chord(uint16_t tap_hold_keycode, keyrecord_t* tap_hold_record,
-                     uint16_t other_keycode, keyrecord_t* other_record) {
-    uint8_t row = other_record->event.key.row;
-    if (row == 3 || row == 7) { return true; }
-    if (IS_QK_MOD_TAP(other_keycode)) { return true; }
-    return achordion_opposite_hands(tap_hold_record, other_record);
-}
- 
-// urob式: 連続タイピング中はtap優先
-uint16_t achordion_streak_chord_timeout(uint16_t tap_hold_keycode,
-                                        uint16_t next_keycode) {
-    if (IS_QK_LAYER_TAP(tap_hold_keycode)) { return 0; }
-    uint8_t mods = mod_config(QK_MOD_TAP_GET_MODS(tap_hold_keycode));
-    if (mods & (MOD_LSFT | MOD_RSFT)) { return 100; }
-    return 150;
-}
- 
-// Shift/Ctrlは判定確定前から効かせる(Ctrl+クリック対応)
-bool achordion_eager_mod(uint8_t mod) {
-    switch (mod) {
-        case MOD_LSFT: case MOD_RSFT:
-        case MOD_LCTL: case MOD_RCTL:
-            return true;
-        default:
-            return false;
-    }
-}
- 
+

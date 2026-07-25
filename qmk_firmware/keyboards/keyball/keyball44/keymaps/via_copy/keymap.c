@@ -146,16 +146,12 @@ static bool update_swapper(bool *active, uint16_t modish, uint16_t tabish,
 }
 
 // ============================================================
-// コンボ: ホームポジションのままクリック(AMLレス運用)
-//   J+K = 左クリック / K+L = 右クリック / J+L = ホイールクリック
+// コンボ: 左クリック+右クリック同時押し → ホイールクリック
+// (マウスレイヤーのJ=BTN1, K=BTN2を同時押しでBTN3)
 // ============================================================
-const uint16_t PROGMEM combo_lclick[] = {KC_J, KC_K, COMBO_END};
-const uint16_t PROGMEM combo_rclick[] = {KC_K, KC_L, COMBO_END};
-const uint16_t PROGMEM combo_mclick[] = {KC_J, KC_L, COMBO_END};
+const uint16_t PROGMEM middle_click_combo[] = {KC_BTN1, KC_BTN2, COMBO_END};
 combo_t key_combos[] = {
-    COMBO(combo_lclick, KC_BTN1),
-    COMBO(combo_rclick, KC_BTN2),
-    COMBO(combo_mclick, KC_BTN3),
+    COMBO(middle_click_combo, KC_BTN3),
 };
 
 // ============================================================
@@ -223,9 +219,15 @@ bool is_mouse_record_user(uint16_t keycode, keyrecord_t* record) {
     return false;
 }
 
-// 親指のLayer-Tapは即hold(hold-preferred相当)
+// Layer-Tapの即hold(hold-preferred相当)は親指キーのみ。
+// 文字キー上のLT(例: L長押しでマウスレイヤー)は流れ打ちで
+// 誤発動するため除外し、時間判定+PERMISSIVE_HOLDに任せる
 bool get_hold_on_other_key_press(uint16_t keycode, keyrecord_t* record) {
-    if (IS_QK_LAYER_TAP(keycode)) { return true; }
+    if (IS_QK_LAYER_TAP(keycode)) {
+        uint16_t tap = keycode & 0xFF;
+        if (tap >= KC_A && tap <= KC_Z) { return false; }
+        return true;
+    }
     return false;
 }
 

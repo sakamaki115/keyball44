@@ -146,11 +146,16 @@ static bool update_swapper(bool *active, uint16_t modish, uint16_t tabish,
 }
 
 // ============================================================
-// コンボ: 左クリック+右クリック同時押し → ホイールクリック
+// コンボ: ホームポジションのままクリック(AMLレス運用)
+//   J+K = 左クリック / K+L = 右クリック / J+L = ホイールクリック
 // ============================================================
-const uint16_t PROGMEM middle_click_combo[] = {KC_BTN1, KC_BTN2, COMBO_END};
+const uint16_t PROGMEM combo_lclick[] = {KC_J, KC_K, COMBO_END};
+const uint16_t PROGMEM combo_rclick[] = {KC_K, KC_L, COMBO_END};
+const uint16_t PROGMEM combo_mclick[] = {KC_J, KC_L, COMBO_END};
 combo_t key_combos[] = {
-    COMBO(middle_click_combo, KC_BTN3),
+    COMBO(combo_lclick, KC_BTN1),
+    COMBO(combo_rclick, KC_BTN2),
+    COMBO(combo_mclick, KC_BTN3),
 };
 
 // ============================================================
@@ -161,6 +166,13 @@ combo_t key_combos[] = {
 #define AML_TIMEOUT_AFTER_CLICK 300
 
 static bool aml_stay_mode = false;
+
+// AMLを起動時に常時有効化
+// (KeyballはAMLのON/OFFをEEPROMで管理し、デフォルトOFF。
+//  この構成はAML前提なのでEEPROMの状態に関係なく強制ONにする)
+void keyboard_post_init_user(void) {
+    set_auto_mouse_enable(true);
+}
 
 report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
     if ((mouse_report.x != 0 || mouse_report.y != 0) && !aml_stay_mode) {

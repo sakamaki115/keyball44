@@ -37,11 +37,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Remapで編集できるレイヤー数(EEPROM容量に注意: 6層で672B)
 #define DYNAMIC_KEYMAP_LAYER_COUNT 6
+#define LAYER_STATE_8BIT  // レイヤーを最大8枚に制限して容量節約
+#define NO_ACTION_ONESHOT  // HRM版はワンショット不使用(Callum版専用機能)
 
 #define COMBO_TERM 30  // クリックコンボの同時押し判定時間(流れ打ち誤爆対策で短め)
 #define POINTING_DEVICE_AUTO_MOUSE_ENABLE
 #define AUTO_MOUSE_DEFAULT_LAYER 1
-#define TAPPING_TERM 280
+#define TAPPING_TERM 280      // urob: 長め。位置ルールに判定を委ねる
+#define QUICK_TAP_TERM 175    // urob: タップ直後の再押下はキーリピート
+#define ACHORDION_STREAK      // urob: 連続タイピング中はtap優先
 #define PERMISSIVE_HOLD  // L長押し中にJを押して離したら即クリック確定
 #define HOLD_ON_OTHER_KEY_PRESS_PER_KEY
 // OLED: 左手(スレーブ)側でレイヤー/修飾キーを表示するための状態同期

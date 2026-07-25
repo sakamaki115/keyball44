@@ -83,7 +83,7 @@ static void render_layer_name(void) {
 
 // hold中の修飾キーを反転表示(HRMの効きが目で見える)
 static void render_mods(void) {
-    uint8_t mods = get_mods() | get_oneshot_mods();
+    uint8_t mods = get_mods();
     oled_write_P(PSTR("S"), mods & MOD_MASK_SHIFT);
     oled_write_P(PSTR("C"), mods & MOD_MASK_CTRL);
     oled_write_P(PSTR("A"), mods & MOD_MASK_ALT);
@@ -106,6 +106,11 @@ void oledkit_render_info_user(void) { render_luna_screen(); }  // 右手(マス�
 void oledkit_render_logo_user(void) { render_luna_screen(); }  // 左手(スレーブ)
 #endif
 
+
+// ============================================================
+// urob式HRM (Achordion)
+// ============================================================
+#include "features/achordion.h"
 
 // ============================================================
 // Swapper: 1キーAlt+Tab (Callum式)
@@ -179,6 +184,8 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
+    if (!process_achordion(keycode, record)) { return false; }
+
     // Swapper (|=で両方の解放判定を必ず実行する)
     bool swapped = false;
     swapped |= update_swapper(&sw_win_active, KC_LALT, KC_TAB, SW_WIN, keycode, record);
@@ -203,6 +210,41 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
         aml_stay_mode = false;
     }
     return true;
+}
+
+void matrix_scan_user(void) {
+    achordion_task();
+}
+
+// urob式: 反対の手ルール+親指例外+同手モッド重ね
+// Layer-Tap(親指のLTやL長押しマウスレイヤー)は対象外
+bool achordion_chord(uint16_t tap_hold_keycode, keyrecord_t* tap_hold_record,
+                     uint16_t other_keycode, keyrecord_t* other_record) {
+    if (IS_QK_LAYER_TAP(tap_hold_keycode)) { return true; }
+    uint8_t row = other_record->event.key.row;
+    if (row == 3 || row == 7) { return true; }
+    if (IS_QK_MOD_TAP(other_keycode)) { return true; }
+    return achordion_opposite_hands(tap_hold_record, other_record);
+}
+
+// urob式: 連続タイピング中はtap優先
+uint16_t achordion_streak_chord_timeout(uint16_t tap_hold_keycode,
+                                        uint16_t next_keycode) {
+    if (IS_QK_LAYER_TAP(tap_hold_keycode)) { return 0; }
+    uint8_t mods = mod_config(QK_MOD_TAP_GET_MODS(tap_hold_keycode));
+    if (mods & (MOD_LSFT | MOD_RSFT)) { return 100; }
+    return 150;
+}
+
+// Shift/Ctrlは判定確定前から効かせる(Ctrl+クリック対応)
+bool achordion_eager_mod(uint8_t mod) {
+    switch (mod) {
+        case MOD_LSFT: case MOD_RSFT:
+        case MOD_LCTL: case MOD_RCTL:
+            return true;
+        default:
+            return false;
+    }
 }
 
 // ボールの微振動での誤発動を防ぐ閾値

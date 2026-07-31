@@ -38,7 +38,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Remapで編集できるレイヤー数(EEPROM容量に注意: 6層で672B)
 #define DYNAMIC_KEYMAP_LAYER_COUNT 6
 #define LAYER_STATE_8BIT  // レイヤーを最大8枚に制限して容量節約
-#define NO_ACTION_ONESHOT  // HRM版はワンショット不使用(Callum版専用機能)
 
 #define COMBO_TERM 30  // クリックコンボの同時押し判定時間(流れ打ち誤爆対策で短め)
 #define POINTING_DEVICE_AUTO_MOUSE_ENABLE

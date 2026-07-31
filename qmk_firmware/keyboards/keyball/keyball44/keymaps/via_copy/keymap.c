@@ -90,20 +90,35 @@ static void render_mods(void) {
     oled_write_P(PSTR("G"), mods & MOD_MASK_GUI);
 }
 
-// 両面共通: Luna(犬) + レイヤー名/修飾キー
-// Shiftで吠える / Ctrlで忍び足 / WPMで歩く・走る / Spaceでジャンプ(右のみ)
-void render_luna(void);
-static void render_luna_screen(void) {
-    render_luna();
-    oled_set_cursor(7, 1);
+// 右手(マスター)側: Vimモード + レイヤー名 + 修飾キー
+#include "qmk-vim/src/vim.h"
+#include "qmk-vim/src/modes.h"
+void oledkit_render_info_user(void) {
+    oled_write_P(PSTR("Vim:"), false);
+    if (!vim_mode_enabled()) {
+        oled_write_P(PSTR("OFF   "), false);
+    } else {
+        static const char PROGMEM names[5][7] = {
+            "NORMAL", "VISUAL", "V-LINE", "INSERT", "??    "};
+        vim_mode_t m = get_vim_mode();
+        oled_write_P(names[m], m != INSERT_MODE);  // INSERT以外は反転で警告
+    }
+    oled_advance_page(true);
     render_layer_name();
-    oled_set_cursor(7, 2);
-    oled_write_P(PSTR("Mods:"), false);
+    oled_advance_page(true);
+    oled_write_P(PSTR("Mods: "), false);
     render_mods();
 }
 
-void oledkit_render_info_user(void) { render_luna_screen(); }  // 右手(マスター)
-void oledkit_render_logo_user(void) { render_luna_screen(); }  // 左手(スレーブ)
+// 左手(スレーブ)側: レイヤー名と修飾キー(HRMのhold状態が見える)
+void oledkit_render_logo_user(void) {
+    oled_write_P(PSTR("Keyball44"), false);
+    oled_advance_page(true);
+    render_layer_name();
+    oled_advance_page(true);
+    oled_write_P(PSTR("Mods: "), false);
+    render_mods();
+}
 #endif
 
 
@@ -121,6 +136,7 @@ void oledkit_render_logo_user(void) { render_luna_screen(); }  // 左手(スレ�
 enum custom_keycodes {
     SW_WIN = QK_USER_0,   // Remap: USER00 (0x7E40) Alt+Tab
     SW_TAB,               // Remap: USER01 (0x7E41) Ctrl+Tab
+    // VIM_TOG = USER02 (0x7E42) はfeatures/vim.cで定義
 };
 
 static bool sw_win_active = false;
@@ -186,22 +202,25 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
     if (!process_achordion(keycode, record)) { return false; }
 
+    {   // qmk-vim (本格版)
+        extern bool process_vim_mode(uint16_t keycode, const keyrecord_t *record);
+        if (!process_vim_mode(keycode, record)) { return false; }
+    }
+
+    // VIM_TOGでvimモードON/OFF
+    if (keycode == QK_USER_0 + 2) {
+        if (record->event.pressed) {
+            extern void toggle_vim_mode(void);
+            toggle_vim_mode();
+        }
+        return false;
+    }
+
     // Swapper (|=で両方の解放判定を必ず実行する)
     bool swapped = false;
     swapped |= update_swapper(&sw_win_active, KC_LALT, KC_TAB, SW_WIN, keycode, record);
     swapped |= update_swapper(&sw_tab_active, KC_LCTL, KC_TAB, SW_TAB, keycode, record);
     if (swapped) { return false; }
-
-    // Space(単体キー/LT・MTのtap側)でLunaがジャンプ
-    {
-        uint16_t base = (IS_QK_LAYER_TAP(keycode) || IS_QK_MOD_TAP(keycode))
-                            ? (keycode & 0xFF) : keycode;
-        if (base == KC_SPC) {
-            extern void luna_jump(void);
-            extern void luna_land(void);
-            if (record->event.pressed) { luna_jump(); } else { luna_land(); }
-        }
-    }
 
     // マウスボタンが押されたら「解除待ち」モードへ(短いタイムアウト)
     if (record->event.pressed &&
